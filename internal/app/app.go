@@ -23,6 +23,7 @@ type App struct {
 
 	boardService handlers.IBoardService
 	userService  handlers.IUserService
+	authService  handlers.IAuthService
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -36,7 +37,8 @@ func New(cfg *config.Config) (*App, error) {
 	}
 
 	boardService := services.NewBoardService(log, strg.Boards)
-	userService := services.NewUserService(log, strg.Users, cfg.TokenTTL)
+	userService := services.NewUserService(log, strg.Users)
+	authService := services.NewAuthService(log, strg.Users, cfg.TokenTTL)
 
 	app := &App{
 		port:         cfg.Port,
@@ -45,6 +47,7 @@ func New(cfg *config.Config) (*App, error) {
 		storage:      strg,
 		boardService: boardService,
 		userService:  userService,
+		authService:  authService,
 	}
 
 	app.setupRouter()
@@ -77,10 +80,12 @@ func (a *App) setupRouter() {
 	boardSubrouter.HandleFunc("/{id}", handlers.GetBoard(a.log, a.boardService)).Methods("GET")
 	boardSubrouter.Use(middleware.Auth)
 
-	a.router.HandleFunc("/sign-up", handlers.RegisterUser(a.log, a.userService)).Methods("POST")
-	a.router.HandleFunc("/sign-in", handlers.LoginUser(a.log, a.userService)).Methods("POST")
+	a.router.HandleFunc("/sign-up", handlers.RegisterUser(a.log, a.authService)).Methods("POST")
+	a.router.HandleFunc("/sign-in", handlers.LoginUser(a.log, a.authService)).Methods("POST")
 
-	a.router.HandleFunc("/user/{id}", handlers.GetUser(a.log, a.userService)).Methods("GET")
+	userSubrouter := a.router.PathPrefix("/user").Subrouter()
+	userSubrouter.HandleFunc("/user/{id}", handlers.GetUser(a.log, a.userService)).Methods("GET")
+	userSubrouter.Use(middleware.Auth)
 
 	a.router.Use(middleware.Logging(a.log))
 }

@@ -12,25 +12,21 @@ import (
 	"time"
 )
 
-var (
-	ErrInvalidCredentials = errors.New("Invalid credentials")
-)
-
-type UserService struct {
+type AuthService struct {
 	userRepo storage.Repository[User]
 	log      *slog.Logger
 	tokenTTL time.Duration
 }
 
-func NewUserService(log *slog.Logger, userRepo storage.Repository[User], tokenTTL time.Duration) *UserService {
-	return &UserService{
+func NewAuthService(log *slog.Logger, userRepo storage.Repository[User], tokenTTL time.Duration) *AuthService {
+	return &AuthService{
 		userRepo: userRepo,
 		log:      log,
 		tokenTTL: tokenTTL,
 	}
 }
 
-func (s *UserService) RegisterUser(login string, password string) error {
+func (s *AuthService) RegisterUser(login string, password string) error {
 	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("In UserService(RegisterUser): %w", err)
@@ -43,7 +39,8 @@ func (s *UserService) RegisterUser(login string, password string) error {
 
 	return nil
 }
-func (s *UserService) LoginUser(login string, password string) (string, error) {
+
+func (s *AuthService) LoginUser(login string, password string) (string, error) {
 	user, err := s.userRepo.FindItemByCondition(
 		func(item User) bool {
 			return item.Login == login
@@ -67,7 +64,4 @@ func (s *UserService) LoginUser(login string, password string) (string, error) {
 	}
 
 	return token, nil
-}
-func (s *UserService) GetUser(id uint) (User, error) {
-	panic("implement me")
 }

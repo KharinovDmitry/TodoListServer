@@ -71,22 +71,25 @@ func GetBoard(log *slog.Logger, boardService IBoardService) http.HandlerFunc {
 
 		userID, ok := r.Context().Value("claims").(uint)
 		if !ok {
+			log.Error("can't parse claims")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		board, err := boardService.GetBoard(uint(id), userID)
 		if err != nil {
+			log.Error(err.Error())
 			if errors.Is(err, postgres.ErrNotFound) {
 				w.Write([]byte("Не найдено"))
+				return
 				//TODO
 			}
 			if errors.Is(err, services.ErrNotAccess) {
 				w.Write([]byte("Нет доступа!"))
+				return
 				//TODO
 			}
 			w.WriteHeader(http.StatusBadRequest)
-			log.Error(err.Error())
 			return
 		}
 
